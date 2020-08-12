@@ -15,9 +15,12 @@ var forecastElement = $("#forecast");
 
 var searchHistoryId = 0;
 
+var searchHistoryArray = [];
+
 
 function getCityInputValue() {
-    return cityInputElement.val();
+    var citySearchValue = cityInputElement.val()
+    return citySearchValue;
 }
 
 function clearCity() {
@@ -25,11 +28,19 @@ function clearCity() {
 }
 
 function createSearchHistoryButton() {
+
+    var cityValue = getCityInputValue();
+    if (searchHistoryArray.includes(cityValue)) {
+        return;
+    }
+
+    searchHistoryArray.push(cityValue);
+
     var btn = $("<button>");
     btn.attr("class", "m-1 search-history-button");
     btn.attr("id", "search-history-btn-" + searchHistoryId);
-    btn.attr("value", getCityInputValue());
-    btn.text(getCityInputValue());
+    btn.attr("value", cityValue);
+    btn.text(cityValue);
 
     var span = $("<span>");
     span.attr("class", "clear-search-history");
@@ -48,7 +59,7 @@ function createForecastElements(response) {
 
     for (let index = 0; index < 5; index++) {
         var card = $("<div>")
-        card.attr("class", "card m-1 p-1")
+        card.attr("class", "card m-1 p-1 col-sm align-items-center")
         card.attr("id", "card-" + index);
         
         var date = $("<p>");
@@ -81,7 +92,17 @@ function getSearchHistoryButtonValue() {
 
 function removeSearchHistoryButton() {
     var btnId = $("#search-history-btn-" + $(this).attr("id"));
+
+    var idx = searchHistoryArray.indexOf(btnId.val());
+
+    if (idx > -1) {
+        console.log(searchHistoryArray);
+        searchHistoryArray.splice(idx, 1);
+        console.log(searchHistoryArray);
+    }
+
     btnId.remove();
+    
 }
 
 function clearErrorMessage() {
@@ -90,19 +111,36 @@ function clearErrorMessage() {
 
 function renderData(response) {
     city.text("City: " + (response.name) + "-" + (moment().utc(response.dt).format("MM/DD/YYYY")));
-    temperature.text("Temperature: " + response.main.temp + "°F")
-    humidity.text("Humidity: " + response.main.humidity + "%")
-    windSpeed.text("Wind Speed: " + response.wind.speed + "MPH")
-    uvIndex.text("UV Index: TBD")
+    temperature.text("Temperature: " + response.main.temp + "°F");
+    humidity.text("Humidity: " + response.main.humidity + "%");
+    windSpeed.text("Wind Speed: " + response.wind.speed + "MPH");
+    getUVIndex(response).then(function(val) {
+        uvIndex.text("UV Index: " + val)
+    });
 }
 
 function renderForecastData(response) {
     clearForecast()
     createForecastElements(response);
-    console.log("YAY!")
 }
 
+function getUVIndex(response) {
+    var apiKey = "&appid=8193a135ed65b0037f8b962f08134b54";
+    var lat = "lat=" + response.coord.lat;
+    var lon = "&lon=" + response.coord.lon;
 
+    var baseUrl = "https://api.openweathermap.org/data/2.5/uvi?"
+
+    var endpointURL = baseUrl + lat + lon + apiKey;
+
+    return $.ajax({
+        type: 'get',
+        timeout: 5000,
+        url: endpointURL
+    }).then(function(response) {
+        return response.value
+    })
+}
 
 function getCityWeather() {
     var apiKey = "&appid=8193a135ed65b0037f8b962f08134b54";
@@ -112,6 +150,7 @@ function getCityWeather() {
     var temperatureUnit = "&units=imperial"
 
     var endpointURL = (baseUrl + cityParameter + temperatureUnit + apiKey);
+    console.log(endpointURL);
 
     $.ajax({
         type: 'get',
@@ -119,8 +158,8 @@ function getCityWeather() {
         url: endpointURL,
     }).done(function(response) {
         clearErrorMessage();
-        createSearchHistoryButton();
         renderData(response);
+        createSearchHistoryButton();
         getForecastWeather()
     }).fail(function() {
         errorMessageElement.text("Please enter a valid city");
@@ -149,7 +188,4 @@ function getForecastWeather() {
     })
 }
 
-
-
 searchCityBtn.on("click", getCityWeather);
-
